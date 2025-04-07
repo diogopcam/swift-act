@@ -19,39 +19,38 @@ struct TokenResponse: Decodable {
     let expires_in: Int
 }
 
-struct SearchResponse: Decodable {
-    let artists: Artists
+// CORPO GERAL DA REQUISIÇÃO
+struct ArtistBodyResponse: Codable {
+    var artists: ArtistResponse
 }
 
-struct Artists: Decodable {
-    let items: [Artist]
-}
-
-struct Artist: Decodable {
-    let name: String
-    let popularity: Int
-    let external_urls: ExternalURLs
-    let images: [SpotifyImage]?
-}
-
-struct ArtistaResponse1: Codable {
-    var artists: ArtistaResponse
-}
-
-struct ArtistaResponse: Codable {
+// ITEMS (COISA DO ARTISTA)
+struct ArtistResponse: Codable {
     var items: [ArtistItem]
 }
 
-
-struct Artista: Codable {
-    var name: String
-    var idade: Int
-}
-
+// DADOS QUE REALMENTE DESEJAMOS ACESSAR
 struct ArtistItem: Codable {
     var id: String
     var name: String
-    
+}
+
+// CORPO DA REQUISICAO
+struct AlbumBodyResponse: Codable {
+    var albums: AlbumResponse
+}
+
+// LISTA COM TODOS OS ALBUNS
+struct AlbumResponse: Codable {
+    var items: [AlbumItem]
+}
+
+// DADOS QUE REALMENTE DESEJAMOS ACESSAR
+struct AlbumItem: Codable {
+    var totalTracks: Int
+    var id: String
+    var name: String
+    var release_date: String
 }
 
 struct Album: Decodable {
@@ -193,9 +192,7 @@ func searchArtistByName(_ artistName: String, completion: @escaping (String?, St
         
         do {
             // 5. Processar a resposta
-
-            
-            let artistResponse = try JSONDecoder().decode(ArtistaResponse1.self, from: data)
+            let artistResponse = try JSONDecoder().decode(ArtistBodyResponse.self, from: data)
             
             guard let artista = artistResponse.artists.items.first else {
                 completion(nil,nil,nil)
@@ -209,7 +206,7 @@ func searchArtistByName(_ artistName: String, completion: @escaping (String?, St
     }.resume()
 }
 
-func fetchArtistAlbums(artistId: String, completion: @escaping ([Album]?, Error?) -> Void) {
+func fetchArtistAlbums(_ artistId: String, completion: @escaping ([AlbumItem]?, Error?) -> Void) {
     // 1. Construir a URL para buscar álbuns do artista
     let urlString = "https://api.spotify.com/v1/artists/\(artistId)/albums?limit=50"
     
@@ -240,21 +237,9 @@ func fetchArtistAlbums(artistId: String, completion: @escaping ([Album]?, Error?
         // 4. Processar a resposta
         do {
             
-            let artistResponse = try JSONDecoder().decode(ArtistaResponse.self, from: data)
-            print(artistResponse.items.first?.name)
-//            if let json = try JSONSDecoder.decode(AlbumRewith: data) as? ArtistaResponse.self,
-//               let albums = json["items"] as? [[String: Any]] {
-//                
-//                // Filtrar apenas álbuns (não singles/compilações)
-//                let filteredAlbums = albums.filter { album in
-//                    let albumType = album["album_type"] as? String ?? ""
-//                    return albumType == "album"
-//                }
-//                
-//                completion(filteredAlbums, nil)
-//            } else {
-//                completion(nil, NSError(domain: "Formato de resposta inválido", code: 500, userInfo: nil))
-//            }
+            let albumResponse = try JSONDecoder().decode(AlbumBodyResponse.self, from: data)
+            
+            completion(albumResponse.albums.items, nil)
         } catch {
             completion(nil, error)
         }
@@ -277,7 +262,7 @@ if !artistName.isEmpty {
             print("ID: \(id)")
             
             // ---- CHAMADA PARA BUSCAR ALBUNS DO ARTISTA PESQUISADO ----
-            fetchArtistAlbums(artistId: id) { albums, error in
+            fetchArtistAlbums(id) { albums, error in
                 if let error = error {
                     print("Erro ao buscar álbuns: \(error.localizedDescription)")
                     return
