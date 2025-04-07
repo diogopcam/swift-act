@@ -7,7 +7,7 @@
 
 import Foundation
 
-let token = "BQAEkkyv7qHBr78LuS5iiNOBNqUQhkCn5nPbs0uCFaTd3LFlV7QQaA81yVs0tl7j3Qru4mzb_y7XObQ4yCyV2Kmi69nlVvicx9jyBWTqENQc78cyz0zg7fVl5q-I07qvuxfZe4F_HFI"
+let token = "BQDxa9fg8AJfyETzSwsp8Sl8w2-U6vih_Eo-l6uqF4h03xf0hP-7y3jmoEC2C_ZPnlihtfltiqs-FPbZSL_r7-PFuifjwiQPVnnNaRc4zu2OpjlPL8FRz9izy4lBTg6Sqnycv8Nr1pA"
 
 let clientID = "06f8ada099474925bdfc9a6feb4cfecb"
 let clientSecret = "ce3b74e7fb3c4ca9a68cd1b847ca3361"
@@ -42,15 +42,33 @@ struct AlbumBodyResponse: Codable {
 
 // LISTA COM TODOS OS ALBUNS
 struct AlbumResponse: Codable {
-    var items: [AlbumItem]
+    let href: String
+    let items: [AlbumItem]
+    let limit: Int
+    let next: String?
+    let offset: Int
+    let previous: String?
+    let total: Int
 }
 
 // DADOS QUE REALMENTE DESEJAMOS ACESSAR
+// Estrutura para cada item de álbum
 struct AlbumItem: Codable {
-    var totalTracks: Int
-    var id: String
-    var name: String
-    var release_date: String
+    let album_type: String
+    let total_tracks: Int
+    let id: String
+    let name: String
+    let release_date: String
+    let release_date_precision: String
+    let type: String
+    let artists: [Artist]
+    let images: [SpotifyImage]?
+    
+    // Você pode remover isso se não for usar
+    let available_markets: [String]?
+    let external_urls: ExternalURLs?
+    let uri: String?
+    let album_group: String?
 }
 
 struct Album: Decodable {
@@ -62,12 +80,23 @@ struct Album: Decodable {
     let images: [SpotifyImage]?
 }
 
-struct ExternalURLs: Decodable {
+struct Artist: Codable {
+    let external_urls: ExternalURLs?
+    let href: String?
+    let id: String
+    let name: String
+    let type: String
+    let uri: String?
+}
+
+struct ExternalURLs: Codable {
     let spotify: String
 }
 
-struct SpotifyImage: Decodable {
+struct SpotifyImage: Codable {
     let url: String
+    let height: Int?
+    let width: Int?
 }
 
 func getAccessToken(completion: @escaping (String?) -> Void) {
@@ -224,23 +253,30 @@ func fetchArtistAlbums(_ artistId: String, completion: @escaping ([AlbumItem]?, 
     URLSession.shared.dataTask(with: request) { data, response, error in
         // Tratar erro de conexão
         if let error = error {
+            print("Deu merda 1")
             completion(nil, error)
             return
         }
         
         // Verificar se recebeu dados
         guard let data = data else {
+            print("Deu merda 2")
             completion(nil, NSError(domain: "Nenhum dado recebido", code: 404, userInfo: nil))
             return
         }
         
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("Resposta da API:\n\(jsonString)")
+        } else {
+            print("Não foi possível converter os dados para string")
+        }
+        
         // 4. Processar a resposta
         do {
-            
-            let albumResponse = try JSONDecoder().decode(AlbumBodyResponse.self, from: data)
-            
-            completion(albumResponse.albums.items, nil)
+            let albumResponse = try JSONDecoder().decode(AlbumResponse.self, from: data)
+            completion(albumResponse.items, nil)
         } catch {
+            print("Deu merda 3")
             completion(nil, error)
         }
     }.resume()
@@ -296,7 +332,7 @@ if !artistName.isEmpty {
     print("Nome do artista não pode ser vazio!")
 }
 
-////// Executar
+//// Executar
 //getAccessToken { token in
 //    if let token = token {
 //        print("Token obtido com sucesso. \(token)")
