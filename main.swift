@@ -35,10 +35,6 @@ struct ArtistItem: Codable {
     var name: String
 }
 
-// CORPO DA REQUISICAO
-struct AlbumBodyResponse: Codable {
-    var albums: AlbumResponse
-}
 
 // LISTA COM TODOS OS ALBUNS
 struct AlbumResponse: Codable {
@@ -237,7 +233,7 @@ func searchArtistByName(_ artistName: String, completion: @escaping (String?, St
 
 func fetchArtistAlbums(_ artistId: String, completion: @escaping ([AlbumItem]?, Error?) -> Void) {
     // 1. Construir a URL para buscar álbuns do artista
-    let urlString = "https://api.spotify.com/v1/artists/\(artistId)/albums?limit=50"
+    let urlString = "https://api.spotify.com/v1/artists/\(artistId)/albums?limit=50&include_groups=album"
     
     guard let url = URL(string: urlString) else {
         completion(nil, NSError(domain: "URL inválida", code: 400, userInfo: nil))
@@ -274,12 +270,36 @@ func fetchArtistAlbums(_ artistId: String, completion: @escaping ([AlbumItem]?, 
         // 4. Processar a resposta
         do {
             let albumResponse = try JSONDecoder().decode(AlbumResponse.self, from: data)
-            completion(albumResponse.items, nil)
+            
+            // --- FILTRO AQUI ---
+               let filteredAlbums = albumResponse.items.filter { item in
+                   item.album_group == "album" ||
+                   item.artists.contains(where: { $0.id == artistId })
+               }
+            
+            completion(filteredAlbums, nil)
+
         } catch {
             print("Deu merda 3")
             completion(nil, error)
         }
     }.resume()
+}
+
+
+func displayAlbum(_ album: AlbumItem, index: Int) {
+    let separator = "✧" + String(repeating: "━", count: 50) + "✧"
+    
+    print("\n\(separator)")
+    print("   🎵 Álbum #\(index + 1)")
+    print(separator)
+    
+    // Informações básicas
+    print("   💿 Nome: \(album.name)")
+    print("   🏷️  Tipo: \(album.album_type.capitalized)")
+    print("   📅 Lançamento: \(album.release_date)")
+    print("   🎵 Total de faixas: \(album.total_tracks)")
+    print("   🆔 ID: \(album.id)")
 }
 
 // ---- MENU ----
@@ -312,15 +332,7 @@ if !artistName.isEmpty {
                 print("\nÁlbuns encontrados:")
                 
                 for (index, album) in albums.enumerated() {
-                    print("Tentando printar o album: \(index + 1). \(album)")
-//                    print("   📅 Lançamento: \(album.release_date)")
-//                    print("   🎵 Faixas: \(album.total_tracks)")
-                    
-//                    if let imageUrl = album.images?.first?.url {
-//                        print("   🖼️ Capa: \(imageUrl)")
-//                    }
-                    
-                    print("----------------------------------")
+                    displayAlbum(album, index: index)
                 }
             }
             
