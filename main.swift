@@ -11,35 +11,77 @@
 // https://accounts.spotify.com/authorize?client_id=06f8ada099474925bdfc9a6feb4cfecb&response_type=code&redirect_uri=http://localhost:8080/callback&scope=user-read-playback-state%20user-modify-playback-state
  //- Acessar o valor ao lado de CODE= (exemplo:         /*http://localhost:8080/callback?code=AQCepbRcgWYBLk0KBwR_DiB9tlfStJeTG5zIzLFby-KEqdXRdU4a6tsXHxP5vpK1EkUfr6FeUpKEsBEm3aTWdQwgEuk34incM2TzzrMFp-pD6JHTtmU4z03kUWok6lmEOQitQodSheyuML8f80faCq0G_Gj7k-RgQTJ2yQ-QmhNRBT6rf-WNZRSS1HoZKGwFacLxH4XbsU4z3Af9BnqMP-gnqAn4tTUPXMqGhINNP_Jk84Js59rIqA)*/
 // - Fazer a seguinte requisicao utilizando o CODE e as credenciais client_id e client_secret
-        //curl -X POST https://accounts.spotify.com/api/token \
-        //  -H "Content-Type: application/x-www-form-urlencoded" \
-        //  -d "grant_type=authorization_code" \
-        //  -d "code=AQCepbRcgWYBLk0KBwR_DiB9tlfStJeTG5zIzLFby-KEqdXRdU4a6tsXHxP5vpK1EkUfr6FeUpKEsBEm3aTWdQwgEuk34incM2TzzrMFp-pD6JHTtmU4z03kUWok6lmEOQitQodSheyuML8f80faCq0G_Gj7k-RgQTJ2yQ-QmhNRBT6rf-WNZRSS1HoZKGwFacLxH4XbsU4z3Af9BnqMP-gnqAn4tTUPXMqGhINNP_Jk84Js59rIqA" \
-        //  -d "redirect_uri=http://localhost:8080/callback" \
-        //  -d "client_id=06f8ada099474925bdfc9a6feb4cfecb" \
-        //  -d "client_secret=ce3b74e7fb3c4ca9a68cd1b847ca3361"
+//        curl -X POST https://accounts.spotify.com/api/token \
+//          -H "Content-Type: application/x-www-form-urlencoded" \
+//          -d "grant_type=authorization_code" \
+//          -d "code=AQB360Etb1_mQwTHSaE8QzsJZAkE7MNArjI00sp3BPeb5toEXoaBK8t44VwnvL_m52q_ollSE62lFW39LSpPBg5i1tYXMqD1anuytTYkEjUxhAcx9RjxoTs3E6h0FQpqflfHNmZbjT8rXx7qJteTFHhq_U6pu4wo2b_FE5K0bm1DRMLP4WvqUZmqZW55dV3M8K6SG_0JCWu4JrR8eX2tzI6yhcdwmkHWhDlJkdWuhay2JzJJZwlSGQ" \
+//          -d "redirect_uri=http://localhost:8080/callback" \
+//          -d "client_id=06f8ada099474925bdfc9a6feb4cfecb" \
+//          -d "client_secret=ce3b74e7fb3c4ca9a68cd1b847ca3361"
 
 // - Se tudo correu bem, você deve receber o access_token que deverá ser utilizado para controlar o player:
 //{"access_token":"BQCMqMxTqMJ6jHpMXTR3rHaxuc5XwmfpoazBQLbJ7WW_yP7UNHV4NKizL51j6bWZ0UTvSAaJdMsz_--tyGEIqX8nS-ML-MjnAllQWK4lnOmGNuYMVUb7BOkyQLyIr9lRYIreO3UQNlNwj40oTqufweJj3Ce4nygmFLdh9ztE4kYmV5E0yKzvg6o6RhuHm_VLXwmvu3ll7MT9NQtbnVKMkk0xjf9FblwR-__WjEI4QL0kMP8","token_type":"Bearer","expires_in":3600,"refresh_token":"AQDjfWRaOLWyrouW3GhBPQYEpnJckcNjA2vniiwswoTp3YE5AW8xlJw6YXOhdFYYacrrSxSTwxPwsBpiiA_CJugZHWIH4tOGzJSmOAOnRrxDx6lkeum6R7IoOgS0ZfbXGsg","scope":"user-modify-playback-state user-read-playback-state"}
 
 import Foundation
 
-let token = "BQBwe7mBgv-GsNhqLTLtqsAKYYvuQtryf7eTQqfRZCLRTitUGXxBIjzoZMMQ3Y78jLOymh8pD8mgnEDzKZ5dSO37e-lurqlKwK0EUhPJuUt94GFSBEi59zaa-m4bK4lgnNYrBTp3hHQ"
-
 let clientID = "06f8ada099474925bdfc9a6feb4cfecb"
 let clientSecret = "ce3b74e7fb3c4ca9a68cd1b847ca3361"
 let semaphore = DispatchSemaphore(value: 0)
 
+func getAccessToken(completion: @escaping (String?) -> Void) {
+    let authURL = URL(string: "https://accounts.spotify.com/api/token")!
+    
+    var request = URLRequest(url: authURL)
+    request.httpMethod = "POST"
+    
+    let credentials = "\(clientID):\(clientSecret)"
+    let encodedCredentials = Data(credentials.utf8).base64EncodedString()
+    request.setValue("Basic \(encodedCredentials)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+    
+    let bodyParams = "grant_type=client_credentials"
+    request.httpBody = bodyParams.data(using: .utf8)
+    
+    let task = URLSession.shared.dataTask(with: request) { data, _, error in
+        defer { semaphore.signal() }
+        
+        if let error = error {
+            print("Erro na requisição do token: \(error.localizedDescription)")
+            completion(nil)
+            return
+        }
+        
+        guard let data = data else {
+            print("Nenhum dado recebido.")
+            completion(nil)
+            return
+        }
+        
+        do {
+            let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
+            completion(tokenResponse.access_token)
+        } catch {
+            print("Erro ao decodificar token: \(error.localizedDescription)")
+            completion(nil)
+        }
+    }
+    
+    task.resume()
+}
+
+var token: String = "BQBVdSznFc4AEOxJj_JrGlPIvYvmmfMnIXsUEgxQzyFhSgGu3-jsr-F-cANZ9fZs0GsOsuFH7rur7uotHXZfnrf9is8RTtMuhzdzNKo6C3q9FnzNd-3O0QyqS6zYytXboxZzlM7JSRM"
 
 // ------ FLUXO DE AUTENTICACAO PARA USAR O PLAYER -----
 // Endereço para conseguir o token de usuário
 let getTokenAdress = "https://accounts.spotify.com/authorize?client_id=06f8ada099474925bdfc9a6feb4cfecb&response_type=code&redirect_uri=http://localhost:8080/callback&scope=user-read-playback-state%20user-modify-playback-state"
 
 // Tokens e credenciais relacionadas ao meu usuário
-let tokenUser = "AQCepbRcgWYBLk0KBwR_DiB9tlfStJeTG5zIzLFby-KEqdXRdU4a6tsXHxP5vpK1EkUfr6FeUpKEsBEm3aTWdQwgEuk34incM2TzzrMFp-pD6JHTtmU4z03kUWok6lmEOQitQodSheyuML8f80faCq0G_Gj7k-RgQTJ2yQ-QmhNRBT6rf-WNZRSS1HoZKGwFacLxH4XbsU4z3Af9BnqMP-gnqAn4tTUPXMqGhINNP_Jk84Js59rIqA"
+let tokenUser = "AQB360Etb1_mQwTHSaE8QzsJZAkE7MNArjI00sp3BPeb5toEXoaBK8t44VwnvL_m52q_ollSE62lFW39LSpPBg5i1tYXMqD1anuytTYkEjUxhAcx9RjxoTs3E6h0FQpqflfHNmZbjT8rXx7qJteTFHhq_U6pu4wo2b_FE5K0bm1DRMLP4WvqUZmqZW55dV3M8K6SG_0JCWu4JrR8eX2tzI6yhcdwmkHWhDlJkdWuhay2JzJJZwlSGQ"
 
 // Resposta da requisição após o uso do token
-let accessTokenPlayer = "BQCMqMxTqMJ6jHpMXTR3rHaxuc5XwmfpoazBQLbJ7WW_yP7UNHV4NKizL51j6bWZ0UTvSAaJdMsz_--tyGEIqX8nS-ML-MjnAllQWK4lnOmGNuYMVUb7BOkyQLyIr9lRYIreO3UQNlNwj40oTqufweJj3Ce4nygmFLdh9ztE4kYmV5E0yKzvg6o6RhuHm_VLXwmvu3ll7MT9NQtbnVKMkk0xjf9FblwR-__WjEI4QL0kMP8"
+let accessTokenPlayer = "BQDoD5rk4tQsFx2JkwkNbLOINg00IEB2mS-6g-tZn7ePNprZ2v3Pb1jcgAgW9IzrBBm9h_15Oltdqhxi_90on4c32LOUzJIoNpYH_c3H-xe5IZcXi5PcGLcqQX3qzr8yEWy17RcFykb47NQ3I8lr1XlcvvHZ-NLv64vsQUPuHZxL3gib16WRjepZ-NzhFmT0_Q7VOtVKHyQRyXJxf4QwhSVVVPWzBpSyjt5piUuHOiAugzU"
+//
+//"token_type":"Bearer","expires_in":3600,"refresh_token":"AQCddcWRuF9RXPQa2vTiEvBBKcEjQMEgzKq-X6U2lasAi8iU4nQcjQKToyXNdNsZBMimiZ66KDwNBhCO8l6EtpgFPnb57ByRZbeascI87qZBzN1UZm8CMwA8UmV0F2pYyEY","scope":"user-modify-playback-state user-read-playback-state"
 // {"access_token":"BQCMqMxTqMJ6jHpMXTR3rHaxuc5XwmfpoazBQLbJ7WW_yP7UNHV4NKizL51j6bWZ0UTvSAaJdMsz_--tyGEIqX8nS-ML-MjnAllQWK4lnOmGNuYMVUb7BOkyQLyIr9lRYIreO3UQNlNwj40oTqufweJj3Ce4nygmFLdh9ztE4kYmV5E0yKzvg6o6RhuHm_VLXwmvu3ll7MT9NQtbnVKMkk0xjf9FblwR-__WjEI4QL0kMP8","token_type":"Bearer","expires_in":3600,"refresh_token":"AQDjfWRaOLWyrouW3GhBPQYEpnJckcNjA2vniiwswoTp3YE5AW8xlJw6YXOhdFYYacrrSxSTwxPwsBpiiA_CJugZHWIH4tOGzJSmOAOnRrxDx6lkeum6R7IoOgS0ZfbXGsg","scope":"user-modify-playback-state user-read-playback-state"}%
 
 struct TokenResponse: Decodable {
@@ -123,20 +165,27 @@ struct SpotifyImage: Codable {
     let width: Int?
 }
 
+struct TracksResponse: Codable {
+    let items: [TrackResponse]
+    // Lista com todas as tracks
+    let total: Int
+    // Total de faixas
+}
+
 struct TrackResponse: Codable {
-    let tracks: TrackItems
-}
-
-struct TrackItems: Codable {
-    let items: [Track]
-}
-
-struct Track: Codable {
+    let durationMs: Int  // camelCase na propriedade Swift
     let id: String
     let name: String
-    let preview_url: String?
-    let artists: [Artist]
-    let album: AlbumItem
+    let trackNumber: Int  // camelCase na propriedade Swift
+    let uri: String
+    
+    private enum CodingKeys: String, CodingKey {
+        case durationMs = "duration_ms"  // mapeia para snake_case do JSON
+        case id
+        case name
+        case trackNumber = "track_number"  // mapeia para snake_case do JSON
+        case uri
+    }
 }
 
 struct Device: Codable {
@@ -149,6 +198,7 @@ struct DevicesResponse: Codable {
     let devices: [Device]
 }
 
+
 struct PlaybackContext: Codable {
     let device: Device?
     let is_playing: Bool
@@ -159,97 +209,6 @@ struct PlayRequest: Codable {
     let context_uri: String?
     let offset: [String: Int]?
     let position_ms: Int?
-}
-
-func getAccessToken(completion: @escaping (String?) -> Void) {
-    let authURL = URL(string: "https://accounts.spotify.com/api/token")!
-    
-    var request = URLRequest(url: authURL)
-    request.httpMethod = "POST"
-    
-    let credentials = "\(clientID):\(clientSecret)"
-    let encodedCredentials = Data(credentials.utf8).base64EncodedString()
-    request.setValue("Basic \(encodedCredentials)", forHTTPHeaderField: "Authorization")
-    request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-    
-    let bodyParams = "grant_type=client_credentials"
-    request.httpBody = bodyParams.data(using: .utf8)
-    
-    let task = URLSession.shared.dataTask(with: request) { data, _, error in
-        defer { semaphore.signal() }
-        
-        if let error = error {
-            print("Erro na requisição do token: \(error.localizedDescription)")
-            completion(nil)
-            return
-        }
-        
-        guard let data = data else {
-            print("Nenhum dado recebido.")
-            completion(nil)
-            return
-        }
-        
-        do {
-            let tokenResponse = try JSONDecoder().decode(TokenResponse.self, from: data)
-            completion(tokenResponse.access_token)
-        } catch {
-            print("Erro ao decodificar token: \(error.localizedDescription)")
-            completion(nil)
-        }
-    }
-    
-    task.resume()
-}
-
-func fetchSpotifyArtist() {
-    // URL da API
-    let urlString = "https://api.spotify.com/v1/artists/2h93pZq0e7k5yf4dywlkpM"
-    
-    guard let url = URL(string: urlString) else {
-        print("URL inválida")
-        return
-    }
-    
-    // Token de autorização
-    let token = "BQDpzLb-_Hskg0nYY4MNoj3HDNv4pAjVzTKGbt97kgkdPpoFtXl3Fw8MNPd6Azl0z_vZmDokYkgtzNpFxgY02zAuGaSYdfGNjcbHsZl38jqBY066pP1ROiQyUD4vZDG0fw5KbgFIzHI"
-    
-    // Criar a requisição
-    var request = URLRequest(url: url)
-    request.httpMethod = "GET"
-    request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-    
-    // Criar a sessão e a tarefa de dados
-    let task = URLSession.shared.dataTask(with: request) { data, response, error in
-        // Verificar erros
-        if let error = error {
-            print("Erro na requisição: \(error.localizedDescription)")
-            return
-        }
-        
-        // Verificar resposta HTTP
-        guard let httpResponse = response as? HTTPURLResponse else {
-            print("Resposta inválida")
-            return
-        }
-        
-        print("Status code: \(httpResponse.statusCode)")
-        
-        // Processar os dados recebidos
-        if let data = data {
-            do {
-                // Tentar decodificar o JSON (supondo que a resposta é JSON)
-                if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
-                    print("Resposta JSON: \(json)")
-                }
-            } catch {
-                print("Erro ao decodificar JSON: \(error.localizedDescription)")
-            }
-        }
-    }
-    
-    // Iniciar a tarefa
-    task.resume()
 }
 
 func searchArtistByName(_ artistName: String, completion: @escaping (String?, String?, Error?) -> Void) {
@@ -352,8 +311,8 @@ func fetchArtistAlbums(_ artistId: String, completion: @escaping ([AlbumItem]?, 
     }.resume()
 }
 
-func getTrackById(trackId: String, completion: @escaping (Track?, Error?) -> Void) {
-    let urlString = "https://api.spotify.com/v1/tracks/\(trackId)"
+func fetchAlbumTracks(_ albumId: String, completion: @escaping ([TrackResponse]?, Error?) -> Void) {
+    let urlString = "https://api.spotify.com/v1/albums/\(albumId)/tracks"
     
     guard let url = URL(string: urlString) else {
         completion(nil, NSError(domain: "URL inválida", code: 400, userInfo: nil))
@@ -375,16 +334,166 @@ func getTrackById(trackId: String, completion: @escaping (Track?, Error?) -> Voi
             return
         }
         
-        do {
-            let track = try JSONDecoder().decode(Track.self, from: data)
-            completion(track, nil)
-        } catch {
+        if let jsonString = String(data: data, encoding: .utf8) {
+//            print("\n📦 JSON da resposta da API:\n\(jsonString)")
+            
+            do {
+                       let decoder = JSONDecoder()
+                       let response = try decoder.decode(TracksResponse.self, from: data)
+                       completion(response.items, nil)
+                   } catch {
+                       print("Erro ao decodificar JSON: \(error)")
+                       completion(nil, error)
+                   }
+            
+        } else {
+            print("⚠️ Não foi possível converter os dados para string.")
+        }
+        
+        // Não retorna nada, só imprime
+        completion(nil, nil)
+    }.resume()
+}
+
+// --- FUNÇÕES DE DISPLAY ---
+func displayAlbum(_ album: AlbumItem, index: Int) {
+    let separator = "✧" + String(repeating: "━", count: 50) + "✧"
+    
+    print("\n\(separator)")
+    print("   🎵 Álbum #\(index + 1)")
+    print(separator)
+    
+    // Informações básicas
+    print("   💿 Nome: \(album.name)")
+    print("   🏷️  Tipo: \(album.album_type.capitalized)")
+    print("   📅 Lançamento: \(album.release_date)")
+    print("   🎵 Total de faixas: \(album.total_tracks)")
+    print("   🆔 ID: \(album.id)")
+}
+
+func displayTracks(_ tracks: [TrackResponse], from album: AlbumItem) {
+    let separator = "✧" + String(repeating: "━", count: 50) + "✧"
+    let smallSeparator = "┄" + String(repeating: "─", count: 48) + "┄"
+    
+    print("\n\(separator)")
+    print("   🎶 TRACKLIST: \(album.name.uppercased())")
+    print(separator)
+    
+    // Cabeçalho
+    print("   #    DURAÇÃO   TÍTULO")
+    print(smallSeparator)
+    
+    // Lista de faixas
+    for (index, track) in tracks.enumerated() {
+        let trackNumber = String(format: "%02d", index + 1)
+        let duration = formatDuration(track.durationMs)
+        
+        print("   \(trackNumber)   \(duration)   \(track.name)")
+        
+        // Adiciona um separador a cada 5 faixas para melhor legibilidade
+        if (index + 1) % 5 == 0 && index != tracks.count - 1 {
+            print(smallSeparator)
+        }
+    }
+    
+    print(separator)
+    print("   🎵 Total de faixas listadas: \(tracks.count)")
+    print(separator)
+}
+
+// Função auxiliar para formatar a duração (ms → mm:ss)
+private func formatDuration(_ milliseconds: Int) -> String {
+    let seconds = milliseconds / 1000
+    let minutes = seconds / 60
+    let remainingSeconds = seconds % 60
+    return String(format: "%02d:%02d", minutes, remainingSeconds)
+}
+
+// --- FUNÇÕES RELACIONADAS AO PLAYER ---
+func getAvailableDevices(completion: @escaping ([Device]?, Error?) -> Void) {
+    let urlString = "https://api.spotify.com/v1/me/player/devices"
+    
+    guard let url = URL(string: urlString) else {
+        completion(nil, NSError(domain: "URL inválida", code: 400, userInfo: nil))
+        return
+    }
+    
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.setValue("Bearer \(accessTokenPlayer)", forHTTPHeaderField: "Authorization")
+    
+    print("\n🔍 Buscando dispositivos disponíveis...")
+    
+    URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+            print("❌ Erro na requisição: \(error.localizedDescription)")
             completion(nil, error)
+            return
+        }
+        
+        guard let data = data else {
+            print("⚠️ Nenhum dado recebido")
+            completion(nil, NSError(domain: "Nenhum dado recebido", code: 404, userInfo: nil))
+            return
+        }
+        
+        // Debug: imprimir resposta bruta
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📦 Resposta bruta: \(jsonString)")
+        } else {
+            print("⚠️ Não foi possível converter dados para string")
+        }
+        
+        do {
+            let response = try JSONDecoder().decode(DevicesResponse.self, from: data)
+            completion(response.devices, nil)
+        } catch let decodingError {
+            print("❌ Erro na decodificação: \(decodingError)")
+            completion(nil, decodingError)
         }
     }.resume()
 }
 
-// Adicione esta função ao seu código existente
+func playTrackOnDevice(deviceId: String, token: String, uris: [String]) {
+    guard let url = URL(string: "https://api.spotify.com/v1/me/player/play?device_id=\(deviceId)") else {
+        print("URL inválida para tocar a faixa")
+        return
+    }
+
+    var request = URLRequest(url: url)
+    request.httpMethod = "PUT"
+    request.setValue("Bearer \(accessTokenPlayer)", forHTTPHeaderField: "Authorization")
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+    let body = ["uris": uris]
+    
+    do {
+        request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+    } catch {
+        print("Erro ao criar corpo da requisição: \(error)")
+        return
+    }
+
+    URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+            print("Erro ao tocar faixa: \(error.localizedDescription)")
+            return
+        }
+
+        if let httpResponse = response as? HTTPURLResponse {
+            if httpResponse.statusCode == 204 {
+                print("Faixa tocando com sucesso no dispositivo: \(deviceId)")
+            } else {
+                print("Erro ao tocar faixa. Código de status: \(httpResponse.statusCode)")
+                if let data = data, let body = String(data: data, encoding: .utf8) {
+                    print("Resposta: \(body)")
+                }
+            }
+        }
+    }.resume()
+}
+
+// -- FUNÇÕES PARA CHAMAR AS REQUISIÇÕES ---
 func testarDispositivos() {
     print("\n🔍 Buscando dispositivos disponíveis no Spotify...")
     
@@ -415,246 +524,171 @@ func testarDispositivos() {
     semaphore.wait()
 }
 
-//// Modifique seu menu principal para incluir a opção de teste
-//func showMainMenu() {
-//    print("\n✧ Terminalfy - Menu Principal ✧")
-//    print("1. Buscar artista")
-//    print("2. Buscar música por nome")
-//    print("3. Tocar música por ID")
-//    print("4. Testar dispositivos Spotify")
-//    print("5. Sair")
-//    print("Escolha uma opção: ", terminator: "")
-//    
-//    if let choice = readLine(), let option = Int(choice) {
-//        switch option {
-//        case 1:
-//            searchArtistFlow()
-//        case 2:
-//            searchTrackFlow()
-//        case 3:
-//            print("\nDigite o ID da música: ", terminator: "")
-//            if let trackId = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) {
-//                selectDeviceAndPlay(trackId: trackId)
-//            }
-//        case 4:
-//            testarDispositivos()
-//        case 5:
-//            exit(0)
-//        default:
-//            print("Opção inválida!")
-//        }
-//    }
-//    showMainMenu()
-//}
-
-func displayAlbum(_ album: AlbumItem, index: Int) {
-    let separator = "✧" + String(repeating: "━", count: 50) + "✧"
-    
-    print("\n\(separator)")
-    print("   🎵 Álbum #\(index + 1)")
-    print(separator)
-    
-    // Informações básicas
-    print("   💿 Nome: \(album.name)")
-    print("   🏷️  Tipo: \(album.album_type.capitalized)")
-    print("   📅 Lançamento: \(album.release_date)")
-    print("   🎵 Total de faixas: \(album.total_tracks)")
-    print("   🆔 ID: \(album.id)")
-}
-
-func getAvailableDevices(completion: @escaping ([Device]?, Error?) -> Void) {
-    let urlString = "https://api.spotify.com/v1/me/player/devices"
-    
-    guard let url = URL(string: urlString) else {
-        completion(nil, NSError(domain: "URL inválida", code: 400, userInfo: nil))
+func tocarFaixa(deviceId: String, token: String, uris: [String]) {
+    guard let url = URL(string: "https://api.spotify.com/v1/me/player/play?device_id=\(deviceId)") else {
+        print("URL inválida para tocar a faixa")
         return
     }
-    
-    var request = URLRequest(url: url)
-    request.httpMethod = "GET"
-    request.setValue("Bearer \(accessTokenPlayer)", forHTTPHeaderField: "Authorization")
-    
-    print("🔍 Fazendo requisição para: \(urlString)")
-    
-    URLSession.shared.dataTask(with: request) { data, response, error in
-        if let error = error {
-            print("❌ Erro na requisição: \(error.localizedDescription)")
-            completion(nil, error)
-            return
-        }
-        
-        // Debug: imprimir resposta HTTP
-        if let httpResponse = response as? HTTPURLResponse {
-            print("📡 Status Code: \(httpResponse.statusCode)")
-            print("📡 Headers: \(httpResponse.allHeaderFields)")
-        }
-        
-        guard let data = data else {
-            print("⚠️ Nenhum dado recebido")
-            completion(nil, NSError(domain: "Nenhum dado recebido", code: 404, userInfo: nil))
-            return
-        }
-        
-        // Debug: imprimir resposta bruta
-        if let jsonString = String(data: data, encoding: .utf8) {
-            print("📦 Resposta bruta: \(jsonString)")
-        } else {
-            print("⚠️ Não foi possível converter dados para string")
-        }
-        
-        do {
-            let response = try JSONDecoder().decode(DevicesResponse.self, from: data)
-            completion(response.devices, nil)
-        } catch let decodingError {
-            print("❌ Erro na decodificação: \(decodingError)")
-            completion(nil, decodingError)
-        }
-    }.resume()
-}
 
-func playTrackOnDevice(trackId: String, deviceId: String? = nil, completion: @escaping (Bool, Error?) -> Void) {
-    let urlString: String
-    if let deviceId = deviceId {
-        urlString = "https://api.spotify.com/v1/me/player/play?device_id=\(deviceId)"
-    } else {
-        urlString = "https://api.spotify.com/v1/me/player/play"
-    }
-    
-    guard let url = URL(string: urlString) else {
-        completion(false, NSError(domain: "URL inválida", code: 400, userInfo: nil))
-        return
-    }
-    
     var request = URLRequest(url: url)
     request.httpMethod = "PUT"
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-    
-    let playRequest = PlayRequest(uris: ["spotify:track:\(trackId)"], context_uri: nil, offset: nil, position_ms: nil)
-    
+
+    let body = ["uris": uris]
+
     do {
-        request.httpBody = try JSONEncoder().encode(playRequest)
+        request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
     } catch {
-        completion(false, error)
+        print("Erro ao criar corpo da requisição: \(error)")
         return
     }
-    
-    URLSession.shared.dataTask(with: request) { _, response, error in
+
+    URLSession.shared.dataTask(with: request) { data, response, error in
         if let error = error {
-            completion(false, error)
+            print("❌ Erro ao tocar faixa: \(error.localizedDescription)")
             return
         }
-        
+
         if let httpResponse = response as? HTTPURLResponse {
-            completion(httpResponse.statusCode == 204, nil)
-        } else {
-            completion(false, NSError(domain: "Resposta inválida", code: 500, userInfo: nil))
+            if httpResponse.statusCode == 204 {
+                print("✅ Faixa tocando com sucesso no dispositivo: \(deviceId)")
+            } else {
+                print("⚠️ Erro ao tocar faixa. Código de status: \(httpResponse.statusCode)")
+                if let data = data, let body = String(data: data, encoding: .utf8) {
+                    print("Resposta: \(body)")
+                }
+            }
         }
     }.resume()
 }
 
-func selectDeviceAndPlay(trackId: String) {
-    getAvailableDevices { devices, error in
-        if let error = error {
-            print("Erro ao buscar dispositivos: \(error.localizedDescription)")
-            return
-        }
-        
-        guard let devices = devices, !devices.isEmpty else {
-            print("Nenhum dispositivo do Spotify encontrado. Por favor, abra o Spotify em algum dispositivo.")
-            return
-        }
-        
-        print("\nDispositivos disponíveis:")
-        for (index, device) in devices.enumerated() {
-            print("\(index + 1). \(device.name)\(device.is_active ? " (Ativo)" : "")")
-        }
-        
-        print("\nDigite o número do dispositivo ou 0 para usar o dispositivo ativo: ", terminator: "")
-        
-        if let choice = readLine(), let option = Int(choice) {
-            if option == 0 {
-                // Usar dispositivo ativo
-                if let activeDevice = devices.first(where: { $0.is_active }) {
-                    playTrackOnDevice(trackId: trackId, deviceId: activeDevice.id) { success, error in
-                        if success {
-                            print("\n🎵 Tocando música no \(activeDevice.name)!")
-                        } else {
-                            print("Erro ao reproduzir música: \(error?.localizedDescription ?? "Desconhecido")")
-                        }
-                    }
-                } else {
-                    print("Nenhum dispositivo ativo encontrado.")
-                }
-            } else if option > 0 && option <= devices.count {
-                // Usar dispositivo selecionado
-                let device = devices[option - 1]
-                playTrackOnDevice(trackId: trackId, deviceId: device.id) { success, error in
-                    if success {
-                        print("\n🎵 Tocando música no \(device.name)!")
-                    } else {
-                        print("Erro ao reproduzir música: \(error?.localizedDescription ?? "Desconhecido")")
-                    }
-                }
-            } else {
-                print("Opção inválida!")
-            }
-        }
-    }
-}
-
 // ---- MENU ----
-//print("Seja bem-vindo ao Terminalfy! Digite o nome do artista:")
-//let artistName = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-//
-//if !artistName.isEmpty {
-//    print("\n🔍 Buscando artista: \(artistName)...")
-//    
-//    searchArtistByName(artistName) { id, name, error in
-//        if let error = error {
-//            print("Erro: \(error.localizedDescription)")
-//        } else if let id = id, let name = name {
-//            print("\n✅ Artista encontrado!")
-//            print("Nome: \(name)")
-//            print("ID: \(id)")
-//            
-//            // ---- CHAMADA PARA BUSCAR ALBUNS DO ARTISTA PESQUISADO ----
-//            fetchArtistAlbums(id) { albums, error in
-//                if let error = error {
-//                    print("Erro ao buscar álbuns: \(error.localizedDescription)")
-//                    return
-//                }
-//                
-//                guard let albums = albums, !albums.isEmpty else {
-//                    print("Nenhum álbum encontrado.")
-//                    return
-//                }
-//                
-//                print("\nÁlbuns encontrados:")
-//                
-//                for (index, album) in albums.enumerated() {
-//                    displayAlbum(album, index: index)
-//                }
-//            }
-//            
-//        } else {
-//            print("Artista não encontrado.")
-//        }
-//    }
-//} else {
-//    print("Nome do artista não pode ser vazio!")
-//}
-testarDispositivos()
-
-// Executar
+// Pegando o token inicial
 //getAccessToken { token in
-//    if let token = token {
+//    if var token = token {
 //        print("Token obtido com sucesso. \(token)")
+//        token = token
 //        // Chamar a função
 //    } else {
 //        print("Não foi possível obter o token.")
-//        semaphore.signal()
+////        semaphore.signal()
 //    }
 //}
+
+//pegarFaixasDoAlbum(albumId: "3mH6qwIy9crq0I9YQbOuDf")
+print("Seja bem-vindo ao Terminalfy! Digite o nome do artista:")
+let artistName = readLine()?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+if !artistName.isEmpty {
+    print("\n🔍 Buscando artista: \(artistName)...")
+
+    searchArtistByName(artistName) { id, name, error in
+        if let error = error {
+            print("Erro: \(error.localizedDescription)")
+        } else if let id = id, let name = name {
+            print("\n✅ Artista encontrado!")
+            print("Nome: \(name)")
+            print("ID: \(id)")
+
+            // ---- CHAMADA PARA BUSCAR ALBUNS DO ARTISTA PESQUISADO ----
+            fetchArtistAlbums(id) { albums, error in
+                if let error = error {
+                    print("Erro ao buscar álbuns: \(error.localizedDescription)")
+                    return
+                }
+
+                guard let albums = albums, !albums.isEmpty else {
+                    print("Nenhum álbum encontrado.")
+                    return
+                }
+
+                print("\nÁlbuns encontrados:")
+
+                for (index, album) in albums.enumerated() {
+                    displayAlbum(album, index: index)
+                }
+                
+                print("Qual álbum você deseja escutar?")
+                if let indexString = readLine(), let index = Int(indexString) {
+//                    let albumId = albums[index].id
+                    let selectedAlbum = albums[index - 1]
+                    print("\n🎶 Preparando para tocar o álbum \(albums[index - 1].name)...")
+                    
+                    fetchAlbumTracks(selectedAlbum.id) { tracks, error in
+                        
+                        if let error = error {
+                            print("❌ Erro ao buscar músicas: \(error.localizedDescription)")
+                            return
+                        }
+                        
+                        guard let tracks = tracks, !tracks.isEmpty else {
+                            print("⚠️ Nenhuma música encontrada para o álbum.")
+                            return
+                        }
+                        
+                        displayTracks(tracks, from: selectedAlbum)
+                        // SELECIONAR MÜSICA
+                        print("Selecione a música que deseja tocar: ")
+                        if let mscString = readLine(), let msc = Int(mscString) {
+                            
+                            let selectedMsc = tracks[msc - 1]
+                            print()
+                            print("Preparando para tocar a música \(tracks[msc - 1].name)")
+                            
+                            getAvailableDevices { devices, error in
+                                if let error = error {
+                                    print("\n❌ Erro ao buscar dispositivos: \(error.localizedDescription)")
+                                    semaphore.signal()
+                                    return
+                                }
+                                
+                                guard let devices = devices, !devices.isEmpty else {
+                                    print("\n⚠️ Nenhum dispositivo do Spotify encontrado.")
+                                    print("Certifique-se que o Spotify está aberto em algum dispositivo (app desktop, web ou mobile)")
+                                    semaphore.signal()
+                                    return
+                                }
+                                
+                                print("\n✅ Dispositivos encontrados:")
+                                for (index, device) in devices.enumerated() {
+                                    print("\n\(index + 1). \(device.name)")
+                                    print("   🔹 ID: \(device.id ?? "N/A")")
+                                    print("   🔹 Status: \(device.is_active ? "Ativo" : "Inativo")")
+                                }
+                                print("Em qual dispositivo você deseja tocar a música?")
+                                
+                                if let indexDevice = readLine(), let index = Int(indexDevice){
+                                    
+                                    let selectedDevice = devices[index - 1]
+                                    
+                                    tocarFaixa(deviceId: selectedDevice.id ?? "", token: accessTokenPlayer, uris: [selectedMsc.uri])
+                                }
+                            }
+                          //  let meuDeviceId
+//                            tocarFaixa(deviceId: meuDeviceId, token: accessTokenPlayer, uris: [selectedMsc.uri])
+                            
+                        }
+                    
+                    }
+                }
+            }
+
+        } else {
+            print("Artista não encontrado.")
+        }
+    }
+} else {
+    print("Nome do artista não pode ser vazio!")
+}
+
+//testarDispositivos()
+
+// Executar
+
+//let meuDeviceId = "3f81d536a323a687be993b0d4fd6eb527768fbf2"
+//let musicas = ["spotify:track:3n3Ppam7vgaVa1iaRUc9Lp"]
+//
+//tocarFaixa(deviceId: meuDeviceId, token: accessTokenPlayer, uris: musicas)
 
 semaphore.wait()
