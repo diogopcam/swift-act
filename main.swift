@@ -5,6 +5,23 @@
 //  Created by ticpucrs on 07/04/25.
 //
 
+// Fluxo:
+// - Token expirou? Rodar apenas getAccessToken
+// - Token do uso do player expirou?
+// https://accounts.spotify.com/authorize?client_id=06f8ada099474925bdfc9a6feb4cfecb&response_type=code&redirect_uri=http://localhost:8080/callback&scope=user-read-playback-state%20user-modify-playback-state
+ //- Acessar o valor ao lado de CODE= (exemplo:         /*http://localhost:8080/callback?code=AQCepbRcgWYBLk0KBwR_DiB9tlfStJeTG5zIzLFby-KEqdXRdU4a6tsXHxP5vpK1EkUfr6FeUpKEsBEm3aTWdQwgEuk34incM2TzzrMFp-pD6JHTtmU4z03kUWok6lmEOQitQodSheyuML8f80faCq0G_Gj7k-RgQTJ2yQ-QmhNRBT6rf-WNZRSS1HoZKGwFacLxH4XbsU4z3Af9BnqMP-gnqAn4tTUPXMqGhINNP_Jk84Js59rIqA)*/
+// - Fazer a seguinte requisicao utilizando o CODE e as credenciais client_id e client_secret
+        //curl -X POST https://accounts.spotify.com/api/token \
+        //  -H "Content-Type: application/x-www-form-urlencoded" \
+        //  -d "grant_type=authorization_code" \
+        //  -d "code=AQCepbRcgWYBLk0KBwR_DiB9tlfStJeTG5zIzLFby-KEqdXRdU4a6tsXHxP5vpK1EkUfr6FeUpKEsBEm3aTWdQwgEuk34incM2TzzrMFp-pD6JHTtmU4z03kUWok6lmEOQitQodSheyuML8f80faCq0G_Gj7k-RgQTJ2yQ-QmhNRBT6rf-WNZRSS1HoZKGwFacLxH4XbsU4z3Af9BnqMP-gnqAn4tTUPXMqGhINNP_Jk84Js59rIqA" \
+        //  -d "redirect_uri=http://localhost:8080/callback" \
+        //  -d "client_id=06f8ada099474925bdfc9a6feb4cfecb" \
+        //  -d "client_secret=ce3b74e7fb3c4ca9a68cd1b847ca3361"
+
+// - Se tudo correu bem, você deve receber o access_token que deverá ser utilizado para controlar o player:
+//{"access_token":"BQCMqMxTqMJ6jHpMXTR3rHaxuc5XwmfpoazBQLbJ7WW_yP7UNHV4NKizL51j6bWZ0UTvSAaJdMsz_--tyGEIqX8nS-ML-MjnAllQWK4lnOmGNuYMVUb7BOkyQLyIr9lRYIreO3UQNlNwj40oTqufweJj3Ce4nygmFLdh9ztE4kYmV5E0yKzvg6o6RhuHm_VLXwmvu3ll7MT9NQtbnVKMkk0xjf9FblwR-__WjEI4QL0kMP8","token_type":"Bearer","expires_in":3600,"refresh_token":"AQDjfWRaOLWyrouW3GhBPQYEpnJckcNjA2vniiwswoTp3YE5AW8xlJw6YXOhdFYYacrrSxSTwxPwsBpiiA_CJugZHWIH4tOGzJSmOAOnRrxDx6lkeum6R7IoOgS0ZfbXGsg","scope":"user-modify-playback-state user-read-playback-state"}
+
 import Foundation
 
 let token = "BQBwe7mBgv-GsNhqLTLtqsAKYYvuQtryf7eTQqfRZCLRTitUGXxBIjzoZMMQ3Y78jLOymh8pD8mgnEDzKZ5dSO37e-lurqlKwK0EUhPJuUt94GFSBEi59zaa-m4bK4lgnNYrBTp3hHQ"
