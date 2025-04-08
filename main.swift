@@ -287,7 +287,7 @@ func fetchArtistAlbums(_ artistId: String, completion: @escaping ([AlbumItem]?, 
         }
         
         if let jsonString = String(data: data, encoding: .utf8) {
-            print("Resposta da API:\n\(jsonString)")
+            //print("Resposta da API:\n\(jsonString)")
         } else {
             print("Não foi possível converter os dados para string")
         }
@@ -439,7 +439,7 @@ func getAvailableDevices(completion: @escaping ([Device]?, Error?) -> Void) {
         
         // Debug: imprimir resposta bruta
         if let jsonString = String(data: data, encoding: .utf8) {
-            print("📦 Resposta bruta: \(jsonString)")
+            //print("📦 Resposta bruta: \(jsonString)")
         } else {
             print("⚠️ Não foi possível converter dados para string")
         }
@@ -597,21 +597,21 @@ if !artistName.isEmpty {
                     print("Erro ao buscar álbuns: \(error.localizedDescription)")
                     return
                 }
-
+                
                 guard let albums = albums, !albums.isEmpty else {
                     print("Nenhum álbum encontrado.")
                     return
                 }
-
+                
                 print("\nÁlbuns encontrados:")
-
+                
                 for (index, album) in albums.enumerated() {
                     displayAlbum(album, index: index)
                 }
                 
                 print("Qual álbum você deseja escutar?")
                 if let indexString = readLine(), let index = Int(indexString) {
-//                    let albumId = albums[index].id
+                    //                    let albumId = albums[index].id
                     let selectedAlbum = albums[index - 1]
                     print("\n🎶 Preparando para tocar o álbum \(albums[index - 1].name)...")
                     
@@ -665,15 +665,10 @@ if !artistName.isEmpty {
                                     tocarFaixa(deviceId: selectedDevice.id ?? "", token: accessTokenPlayer, uris: [selectedMsc.uri])
                                 }
                             }
-                          //  let meuDeviceId
-//                            tocarFaixa(deviceId: meuDeviceId, token: accessTokenPlayer, uris: [selectedMsc.uri])
-                            
                         }
-                    
                     }
                 }
             }
-
         } else {
             print("Artista não encontrado.")
         }
@@ -681,14 +676,5 @@ if !artistName.isEmpty {
 } else {
     print("Nome do artista não pode ser vazio!")
 }
-
-//testarDispositivos()
-
-// Executar
-
-//let meuDeviceId = "3f81d536a323a687be993b0d4fd6eb527768fbf2"
-//let musicas = ["spotify:track:3n3Ppam7vgaVa1iaRUc9Lp"]
-//
-//tocarFaixa(deviceId: meuDeviceId, token: accessTokenPlayer, uris: musicas)
 
 semaphore.wait()
